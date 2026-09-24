@@ -110,7 +110,7 @@ Two choices matter more than anything else:
 
 **Requirements:** Windows 10/11 · NVIDIA GPU with 12 GB (10 GB experimental, see below) · driver 580+ · ~25 GB free disk · 32 GB RAM (what it was tested with; 16 GB is untested).
 
-1. Download `Qwen Image Local_x.y.z_x64-setup.exe` from [Releases](https://github.com/Mats2208/qwen-image-local/releases/latest) and run it. It installs for your user only; no admin needed.
+1. Download `Qwen.Image.Local_x.y.z_x64-setup.exe` from [Releases](https://github.com/Mats2208/qwen-image-local/releases/latest) and run it. It installs for your user only; no admin needed.
 2. Open the app. The setup screen downloads about **19.5 GB** once: engine, Python, PyTorch, and the weights from [Hugging Face](https://huggingface.co/Comfy-Org/Qwen-Image-2.1). Downloads resume if interrupted and are checked against SHA-256.
 3. Press **Start creating**.
 
