@@ -6,7 +6,7 @@
 
 [![Status](https://img.shields.io/badge/status-beta-d29922?style=flat-square)](CHANGELOG.md)
 [![Windows](https://img.shields.io/badge/windows-10%20%7C%2011-0078D4?style=flat-square&logo=windows&logoColor=white)](https://github.com/Mats2208/qwen-image-local/releases)
-[![Rust](https://img.shields.io/badge/rust-tauri%202-24C8DB?style=flat-square&logo=tauri&logoColor=white)](https://v2.tauri.app)
+[![Stars](https://img.shields.io/github/stars/Mats2208/qwen-image-local?style=flat-square&logo=github&color=e3b341)](https://github.com/Mats2208/qwen-image-local/stargazers)
 [![Model](https://img.shields.io/badge/model-Qwen--Image--2.1-615CED?style=flat-square)](https://huggingface.co/Qwen/Qwen-Image-2.1)
 [![Benchmark](https://img.shields.io/badge/benchmark-vs%20gpt--image--2-4051B5?style=flat-square)](https://mats2208.github.io/qwen-image-local/)
 [![License](https://img.shields.io/github/license/Mats2208/qwen-image-local?style=flat-square&color=green)](LICENSE)
@@ -23,7 +23,7 @@
 </tr>
 </table>
 
-**📊 Benchmark:** [mats2208.github.io/qwen-image-local](https://mats2208.github.io/qwen-image-local/) &nbsp;•&nbsp; **⬇️ Download:** [latest release](https://github.com/Mats2208/qwen-image-local/releases/latest)
+**📊 Benchmark:** [mats2208.github.io/qwen-image-local](https://mats2208.github.io/qwen-image-local/) &nbsp;•&nbsp; **🛠️ Build it:** [one command](#install) &nbsp;•&nbsp; **⭐ [Star it](https://github.com/Mats2208/qwen-image-local/stargazers)** if it runs on your card: that is how other people with small GPUs find it.
 
 </div>
 
@@ -62,7 +62,7 @@ Qwen-Image-2.1 came out on September 20, 2026. It is the first open-weight image
 | **Transparency** | Native RGBA | Real alpha channel from the model, no background-removal tricks |
 | **Edit** | 1–10 reference photos | Relight, restyle, remove objects or people, rewrite signs, combine subjects; the first photo is the canvas |
 | **Surprise me** | Idea generator | Style × subject × place × light, or a curated idea; optional theme |
-| **Setup** | One-time installer | Pinned ComfyUI, Python 3.12, PyTorch CUDA 13, weights with resume and SHA-256 checks |
+| **Setup** | One-command build + one-time install | Pinned ComfyUI, Python 3.12, PyTorch CUDA 13, weights with resume and SHA-256 checks |
 | **CLI** | `qil` | `doctor` · `setup` · `generate` · `edit` · `surprise` · `bench` · `config` |
 | **Privacy** | Local | Prompts and photos only ever go to the engine on `127.0.0.1`. Every image is saved with a `.json` of its prompt, seed and settings |
 
@@ -110,15 +110,76 @@ Two choices matter more than anything else:
 
 **Requirements:** Windows 10/11 · NVIDIA GPU with 12 GB (10 GB experimental, see below) · driver 580+ · ~25 GB free disk · 32 GB RAM (what it was tested with; 16 GB is untested).
 
-1. Download `Qwen.Image.Local_x.y.z_x64-setup.exe` from [Releases](https://github.com/Mats2208/qwen-image-local/releases/latest) and run it. It installs for your user only; no admin needed.
-2. Open the app. The setup screen downloads about **19.5 GB** once: engine, Python, PyTorch, and the weights from [Hugging Face](https://huggingface.co/Comfy-Org/Qwen-Image-2.1). Downloads resume if interrupted and are checked against SHA-256.
-3. Press **Start creating**.
+### Option A · Build it yourself (recommended, ~5 min)
 
-Everything lives in `%LOCALAPPDATA%\qwen-image-local` (models can go on another disk). Uninstalling is deleting that folder.
+A binary you compile on your own PC carries no "downloaded from the internet" mark, so Windows SmartScreen won't flag it, and you know exactly what you are running.
+
+**1. Prerequisites, once.** Paste into any terminal:
+
+```powershell
+winget install Rustlang.Rustup
+winget install OpenJS.NodeJS.LTS
+winget install Microsoft.VisualStudio.2022.BuildTools --override "--quiet --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+```
+
+Close and reopen the terminal afterwards so it picks up the new tools.
+
+**2. Clone and build.** Pick the block for the terminal you use:
+
+<table>
+<tr><th>Terminal</th><th>Command</th></tr>
+<tr><td><b>PowerShell 5.1</b><br/><sub>the one that ships with Windows</sub></td><td>
+
+```powershell
+git clone https://github.com/Mats2208/qwen-image-local; cd qwen-image-local
+powershell -ExecutionPolicy Bypass -File .uild.ps1
+```
+
+</td></tr>
+<tr><td><b>PowerShell 7</b><br/><sub>pwsh, Windows Terminal default</sub></td><td>
+
+```powershell
+git clone https://github.com/Mats2208/qwen-image-local; cd qwen-image-local
+pwsh -ExecutionPolicy Bypass -File ./build.ps1
+```
+
+</td></tr>
+<tr><td><b>CMD</b><br/><sub>Command Prompt</sub></td><td>
+
+```bat
+git clone https://github.com/Mats2208/qwen-image-local && cd qwen-image-local
+.uild.cmd
+```
+
+</td></tr>
+<tr><td><b>Git Bash · Warp</b><br/><sub>any bash on Windows</sub></td><td>
+
+```bash
+git clone https://github.com/Mats2208/qwen-image-local && cd qwen-image-local
+./build.sh
+```
+
+</td></tr>
+<tr><td><b>No terminal</b></td><td>
+
+Download the [source zip](https://github.com/Mats2208/qwen-image-local/archive/refs/heads/main.zip), extract it and **double-click `build.cmd`**.
+
+</td></tr>
+</table>
+
+All five run the same `build.ps1`, which checks the prerequisites (and tells you the exact command for anything missing), then leaves `qwen-image-local.exe` and `qil.exe` in `out\`. Add `-Installer` to also build the setup `.exe`. Tested with PowerShell 5.1, PowerShell 7.6, CMD and Git Bash.
+
+**3. Run** `out\qwen-image-local.exe`. The first launch installs the engine and downloads about **19.5 GB** once: engine, Python, PyTorch, and the weights from [Hugging Face](https://huggingface.co/Comfy-Org/Qwen-Image-2.1). Downloads resume if interrupted and are checked against SHA-256.
+
+### Option B · Prebuilt installer
+
+Download `Qwen.Image.Local_x.y.z_x64-setup.exe` from [Releases](https://github.com/Mats2208/qwen-image-local/releases/latest) and run it; it installs for your user only, no admin. It is not code-signed (certificates are paid), so SmartScreen will warn the first time: **More info → Run anyway**.
+
+Either way, everything lives in `%LOCALAPPDATA%\qwen-image-local` (models can go on another disk), and uninstalling is deleting that folder.
 
 ## Quick start (CLI)
 
-`qil.exe` ships in the release zip and uses the same install as the app.
+`qil.exe` comes out of the same build (or the release zip) and uses the same install as the app.
 
 ```text
 > qil doctor
@@ -181,7 +242,15 @@ bench/            suite.json, input photos with credits, results, verdicts, site
 docs/             GitHub Pages benchmark site
 ```
 
-Build from source: `cargo build --release -p qil-cli`, and `cd app && npm install && npx tauri build` for the app.
+`build.ps1` / `build.cmd` / `build.sh` wrap the two builds: `cargo build --release -p qil-cli` and `npx tauri build` in `app/`.
+
+## Help it spread
+
+This exists because a 12 GB card deserved better than "buy a 4090". If it ran on yours:
+
+- **⭐ [Star the repo](https://github.com/Mats2208/qwen-image-local/stargazers).** It is the single thing that makes GitHub and search engines show it to the next person with a small GPU.
+- **Share it** where people ask "what can I run on my card?": [r/StableDiffusion](https://www.reddit.com/r/StableDiffusion/), [r/LocalLLaMA](https://www.reddit.com/r/LocalLLaMA/), [X / Twitter](https://twitter.com/intent/tweet?text=Qwen-Image-2.1%20running%20fully%20in%20VRAM%20on%20a%2012%20GB%20GPU%2C%20desktop%20app%20%2B%20honest%20benchmark%20vs%20gpt-image-2&url=https%3A%2F%2Fgithub.com%2FMats2208%2Fqwen-image-local), your Discord.
+- **Post your numbers.** Own an 8, 10 or 16 GB card? Run `bash bench/tiers/run.sh` and open an issue with `results.json`. Real 8 GB results are the most wanted data point here.
 
 ## Credits
 
