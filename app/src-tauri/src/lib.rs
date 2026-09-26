@@ -144,13 +144,56 @@ async fn gpu_stats() -> Option<gpu::Gpu> {
     tauri::async_runtime::spawn_blocking(gpu::detect).await.ok().flatten()
 }
 
+/// Decodes an image as it should be seen: phone photos are often stored sideways with an
+/// EXIF orientation tag, which image::open ignores.
+fn open_upright(path: &str) -> Result<image::DynamicImage, String> {
+    let err = |e: &dyn std::fmt::Display| format!("Cannot open the image: {e}");
+    let mut decoder = image::ImageReader::open(path)
+        .and_then(|r| r.with_guessed_format())
+        .map_err(|e| err(&e))?
+        .into_decoder()
+        .map_err(|e| err(&e))?;
+    let orientation = image::ImageDecoder::orientation(&mut decoder).unwrap_or(image::metadata::Orientation::NoTransforms);
+    let mut img = image::DynamicImage::from_decoder(decoder).map_err(|e| err(&e))?;
+    img.apply_orientation(orientation);
+    Ok(img)
+}
+
+/// Writes a copy of a reference turned 90° clockwise and returns its path. The user's file is
+/// never touched; the copy is what gets uploaded to the engine.
+#[tauri::command]
+async fn rotate_image(settings: State<'_, Settings>, path: String) -> Result<String, String> {
+    let dir = cfg(&settings).runtime_dir.join("rotated");
+    tauri::async_runtime::spawn_blocking(move || {
+        let img = open_upright(&path)?.rotate90();
+        std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        let stem = std::path::Path::new(&path).file_stem().and_then(|s| s.to_str()).unwrap_or("image");
+        let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0);
+        // Keep transparency when there is any; photos go back to JPEG so uploads stay small.
+        let out = if img.color().has_alpha() {
+            let out = dir.join(format!("{stem}_{stamp}.png"));
+            img.save(&out).map_err(|e| e.to_string())?;
+            out
+        } else {
+            let out = dir.join(format!("{stem}_{stamp}.jpg"));
+            let file = std::io::BufWriter::new(std::fs::File::create(&out).map_err(|e| e.to_string())?);
+            image::codecs::jpeg::JpegEncoder::new_with_quality(file, 95)
+                .encode_image(&img.to_rgb8())
+                .map_err(|e| e.to_string())?;
+            out
+        };
+        Ok(out.to_string_lossy().into_owned())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// JPEG thumbnail as a data URL, so the UI can show references without file-system access.
 #[tauri::command]
 async fn thumbnail(path: String, size: Option<u32>) -> Result<String, String> {
     let size = size.unwrap_or(256);
     tauri::async_runtime::spawn_blocking(move || {
-        let img = image::open(&path).map_err(|e| format!("Cannot open the image: {e}"))?;
-        let t = img.thumbnail(size, size).to_rgb8();
+        let t = open_upright(&path)?.thumbnail(size, size).to_rgb8();
         let mut buf = std::io::Cursor::new(Vec::new());
         t.write_to(&mut buf, image::ImageFormat::Jpeg).map_err(|e| e.to_string())?;
         Ok(format!("data:image/jpeg;base64,{}", base64::engine::general_purpose::STANDARD.encode(buf.into_inner())))
@@ -251,6 +294,7 @@ pub fn run() {
             surprise_idea,
             gpu_stats,
             thumbnail,
+            rotate_image,
             pick_images,
             list_outputs,
             output_dir,

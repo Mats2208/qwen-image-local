@@ -48,7 +48,7 @@
       step: (v, m) => `Step ${v} / ${m}`, perStep: "s/step", left: "left",
       cancelled: "Generation cancelled.", copied: "Prompt copied.", copyFail: "Could not copy.",
       limitRefs: (a, b, m) => `Added ${a} of ${b}: the limit is ${m} references.`,
-      canvas: "Canvas", remove: "Remove", refs: "refs",
+      canvas: "Canvas", remove: "Remove", rotate: "Rotate 90°", refs: "refs",
       eventsFail: "Could not register events (check capabilities/default.json): ",
     },
     es: {
@@ -98,7 +98,7 @@
       step: (v, m) => `Paso ${v} / ${m}`, perStep: "s/paso", left: "restantes",
       cancelled: "Generación cancelada.", copied: "Prompt copiado.", copyFail: "No se pudo copiar.",
       limitRefs: (a, b, m) => `Se agregaron ${a} de ${b}: el límite es ${m} referencias.`,
-      canvas: "Lienzo", remove: "Quitar", refs: "ref.",
+      canvas: "Lienzo", remove: "Quitar", rotate: "Girar 90°", refs: "ref.",
       eventsFail: "No se pudieron registrar los eventos (revisá capabilities/default.json): ",
     },
   };

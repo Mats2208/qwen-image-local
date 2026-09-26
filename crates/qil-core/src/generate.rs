@@ -265,16 +265,29 @@ pub async fn run(
         }
     }
 
+    // The WebSocket can drop before the prompt finishes; /history is the source of truth,
+    // and it only holds the entry once execution is over.
+    let deadline = Instant::now() + std::time::Duration::from_secs(30 * 60);
+    let entry = loop {
+        let hist: Value = client
+            .get(format!("{base}/history/{prompt_id}"))
+            .send()
+            .await
+            .map_err(|e| e.to_string())?
+            .json()
+            .await
+            .map_err(|e| e.to_string())?;
+        let entry = &hist[&prompt_id];
+        if entry["status"]["completed"].as_bool() == Some(true) || entry["status"]["status_str"].as_str() == Some("error") {
+            break entry.clone();
+        }
+        if Instant::now() > deadline {
+            return Err(format!("The engine did not finish within 30 min; see {}", cfg.engine_log().display()));
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(750)).await;
+    };
     emit("save", 0, 0);
-    let hist: Value = client
-        .get(format!("{base}/history/{prompt_id}"))
-        .send()
-        .await
-        .map_err(|e| e.to_string())?
-        .json()
-        .await
-        .map_err(|e| e.to_string())?;
-    let entry = &hist[&prompt_id];
+    let entry = &entry;
     if entry["status"]["status_str"].as_str() == Some("error") {
         return Err(format!("The engine finished with an error; see {}", cfg.engine_log().display()));
     }
