@@ -1,7 +1,7 @@
 {
   "name": "qwen-image-local",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.2",
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build"
