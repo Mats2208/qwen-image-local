@@ -129,6 +129,16 @@ textarea:focus-visible, input:focus-visible, .ref:focus-visible, .hist:focus-vis
 .btn-block { width: 100%; height: 38px; font-size: 13px; }
 .btn-primary { background: var(--primary); color: var(--on-primary); border-color: var(--primary); font-weight: 600; }
 .btn-primary:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); }
+.gen-split { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 42px; }
+.gen-main { width: 100%; height: 38px; border-radius: var(--r) 0 0 var(--r); font-size: 13px; }
+.gen-menu-toggle { height: 38px; padding: 0; border-left-color: color-mix(in srgb, var(--on-primary) 28%, transparent); border-radius: 0 var(--r) var(--r) 0; }
+.gen-menu-toggle:hover:not(:disabled) { border-left-color: color-mix(in srgb, var(--on-primary) 40%, transparent); }
+.chevron { width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-2px) rotate(45deg); }
+.gen-menu { position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 10; }
+.gen-menu-item { display: block; width: 100%; height: 38px; padding: 0 12px; border: 1px solid var(--primary); border-radius: var(--r); background: var(--primary); color: var(--on-primary); font: 600 13px var(--font-sans); text-align: center; cursor: pointer; transition: background 0.12s, border-color 0.12s; }
+.gen-menu-item:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); }
+.gen-menu-item:disabled { opacity: 0.45; cursor: not-allowed; }
+.gen-menu-item:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
 
 /* ── Distribución ── */
 .app { flex: 1; min-height: 0; display: grid; grid-template-columns: 372px minmax(0, 1fr); }
@@ -317,11 +327,15 @@ input.mono { font-family: var(--font-mono); font-size: 12px; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
-/* ── Language switch ── */
-.lang { display: flex; border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
-.lang button { height: 24px; padding: 0 8px; border: 0; background: var(--panel); color: var(--text-muted); font: 600 11px var(--font-mono); cursor: pointer; }
-.lang button + button { border-left: 1px solid var(--border); }
-.lang button[aria-pressed="true"] { background: var(--sunken); color: var(--text); }
+/* ── Language menu ── */
+.lang { position: relative; }
+.lang-toggle { width: 28px; height: 26px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--border); border-radius: var(--r); background: var(--panel); color: var(--text-muted); cursor: pointer; }
+.lang-toggle:hover { background: var(--hover); border-color: var(--border-strong); color: var(--text); }
+.lang-toggle svg { width: 15px; height: 15px; }
+.lang-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 10; min-width: 112px; padding: 4px; border: 1px solid var(--border); border-radius: var(--r); background: var(--panel); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12); }
+.lang-menu button { width: 100%; display: block; padding: 6px 8px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--text-muted); font: 500 12px var(--font-sans); text-align: left; cursor: pointer; }
+.lang-menu button:hover, .lang-menu button[aria-current="true"] { background: var(--sunken); color: var(--text); }
+.lang-toggle:focus-visible, .lang-menu button:focus-visible { outline: 2px solid var(--text); outline-offset: 1px; }
 
 /* ── First-run setup ── */
 .setup { flex: 1; min-height: 0; overflow-y: auto; background: var(--bg); }

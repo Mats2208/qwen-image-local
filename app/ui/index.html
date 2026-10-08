@@ -23,8 +23,15 @@
       </div>
       <button class="btn btn-sm" id="engineBtn" type="button" hidden></button>
       <button class="btn btn-sm" id="folderBtn" type="button" data-i18n="openFolder" hidden></button>
-      <div class="lang" role="group" aria-label="Language">
-        <button type="button" data-lang="en">EN</button><button type="button" data-lang="es">ES</button>
+      <div class="lang">
+        <button class="lang-toggle" id="langToggle" type="button" aria-label="Change language" aria-expanded="false" aria-controls="languageMenu">
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"></path></svg>
+        </button>
+        <div class="lang-menu" id="languageMenu" role="menu" hidden>
+          <button type="button" role="menuitem" data-lang="en">English</button>
+          <button type="button" role="menuitem" data-lang="ru">Русский</button>
+          <button type="button" role="menuitem" data-lang="es">Español</button>
+        </div>
       </div>
     </div>
   </header>
@@ -172,7 +179,15 @@
       </div>
 
       <div class="panel-foot">
-        <button type="button" class="btn btn-primary btn-block" id="genBtn" disabled></button>
+        <div class="gen-split">
+          <button type="button" class="btn btn-primary gen-main" id="genBtn" disabled></button>
+          <button type="button" class="btn btn-primary gen-menu-toggle" id="genMenuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="genMenu" disabled>
+            <span class="chevron" aria-hidden="true"></span>
+          </button>
+          <div class="gen-menu" id="genMenu" role="menu" hidden>
+            <button type="button" class="gen-menu-item" id="genForeverBtn" role="menuitem" data-i18n="generateForever"></button>
+          </div>
+        </div>
         <button type="button" class="btn btn-block" id="cancelBtn" data-i18n="cancel" hidden></button>
         <p class="kbd mono" data-i18n="kbd"></p>
       </div>

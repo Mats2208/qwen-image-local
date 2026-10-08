@@ -30,6 +30,8 @@
     busy: false,
     current: null,
     history: [],
+    generationRun: 0,
+    stopRequested: false,
     lastIdea: null,
     stepTimes: [],
     setup: null, // SetupInfo from Rust
@@ -294,6 +296,11 @@
     if (state.mode === "photos") return $("promptPhotos").value.trim();
     return "surprise";
   }
+  function setGenerateMenu(open) {
+    const menu = $("genMenu");
+    menu.hidden = !open;
+    $("genMenuBtn").setAttribute("aria-expanded", String(open));
+  }
   function updateGenButton() {
     const btn = $("genBtn");
     let label = t("gen");
@@ -307,9 +314,18 @@
     else if (state.mode === "photos") label = state.refs.length > 1 ? t("genWith", state.refs.length) : t("genEdit");
     btn.textContent = label;
     btn.disabled = !ok;
+    $("genMenuBtn").disabled = !ok;
+    $("genForeverBtn").disabled = !ok;
+    if (!ok) setGenerateMenu(false);
     $("cancelBtn").hidden = !state.busy;
+    const locked = state.busy;
+    document.querySelectorAll("[data-mode], #promptText, #promptPhotos, #theme, #transparent, #seedLock, #seed, #presets [data-preset], #aspects [data-ar], #quick button").forEach((el) => { el.disabled = locked; });
+    document.querySelectorAll(".ref-add, .ref .rot, .ref .x").forEach((el) => { el.disabled = locked; });
   }
   ["promptText", "promptPhotos"].forEach((id) => $(id).addEventListener("input", updateGenButton));
+  $("genMenuBtn").addEventListener("click", () => setGenerateMenu($("genMenu").hidden));
+  $("genForeverBtn").addEventListener("click", () => { setGenerateMenu(false); generate(true); });
+  document.addEventListener("click", (e) => { if (!e.target.closest(".gen-split")) setGenerateMenu(false); });
 
   // Engine
   function renderEngine(ev) {
@@ -349,52 +365,92 @@
   }
 
   // Generate
-  async function generate() {
+  async function generate(continuous = false) {
     if ($("genBtn").disabled) return;
-    let prompt = currentPrompt();
-    let aspect = state.aspect;
-    if (state.mode === "surprise") {
-      const idea = await invoke("surprise_idea", { theme: $("theme").value || null });
-      prompt = idea.prompt;
-      aspect = state.surpriseAspect === "random" ? idea.aspect : state.surpriseAspect;
-      state.lastIdea = prompt;
-      $("idea").hidden = false;
-      $("ideaTxt").textContent = prompt;
-    }
-    const seed = $("seedLock").checked && $("seed").value ? Number($("seed").value) : null;
-    const req = {
+    setGenerateMenu(false);
+    const snapshot = {
       mode: state.mode,
-      prompt,
+      prompt: currentPrompt(),
       images: state.mode === "photos" ? state.refs.map((r) => r.path) : [],
       preset: state.preset,
-      aspect,
-      seed,
+      aspect: state.aspect,
+      surpriseAspect: state.surpriseAspect,
+      theme: $("theme").value || null,
       transparent: state.mode === "text" && $("transparent").checked,
+      lockedSeed: $("seedLock").checked && $("seed").value ? Number($("seed").value) : null,
+      seedLocked: $("seedLock").checked && !!$("seed").value,
     };
+    const runId = ++state.generationRun;
+    state.stopRequested = false;
     state.busy = true;
-    state.stepTimes = [];
     hideNotice();
-    showWorking("load", 0, 0);
     updateGenButton();
     renderEngine();
-    try {
-      const r = await invoke("generate", { req });
+
+    async function nextRequest() {
+      let prompt = snapshot.prompt;
+      let aspect = snapshot.aspect;
+      if (snapshot.mode === "surprise") {
+        const idea = await invoke("surprise_idea", { theme: snapshot.theme });
+        prompt = idea.prompt;
+        aspect = snapshot.surpriseAspect === "random" ? idea.aspect : snapshot.surpriseAspect;
+        state.lastIdea = prompt;
+        $("idea").hidden = false;
+        $("ideaTxt").textContent = prompt;
+      }
+      return {
+        mode: snapshot.mode,
+        prompt,
+        images: snapshot.images,
+        preset: snapshot.preset,
+        aspect,
+        seed: snapshot.seedLocked ? snapshot.lockedSeed : null,
+        transparent: snapshot.transparent,
+      };
+    }
+
+    const appendResult = (r, req) => {
       const item = { path: r.path, meta: { ...req, seed: r.seed, width: r.width, height: r.height, seconds: r.seconds, references: req.images } };
       state.history.unshift(item);
       showImage(item);
       renderHistory();
+    };
+
+    try {
+      let iterations = 0;
+      while (continuous || iterations === 0) {
+        if (runId !== state.generationRun || state.stopRequested) break;
+        const req = await nextRequest();
+        if (runId !== state.generationRun || state.stopRequested) break;
+        state.stepTimes = [];
+        showWorking("load", 0, 0);
+        const r = await invoke("generate", { req });
+        if (runId !== state.generationRun || state.stopRequested) break;
+        appendResult(r, req);
+        iterations += 1;
+        if (!continuous) break;
+      }
+      if (state.stopRequested || runId !== state.generationRun) notify(t("cancelled"), true);
     } catch (e) {
       const msg = String(e);
       if (msg === "Cancelled") notify(t("cancelled"), true); else notify(msg);
     } finally {
       state.busy = false;
+      state.stopRequested = false;
       hideWorking();
       updateGenButton();
       renderEngine();
     }
   }
-  $("genBtn").addEventListener("click", generate);
-  $("cancelBtn").addEventListener("click", () => { $("cancelBtn").disabled = true; invoke("cancel"); });
+  $("genBtn").addEventListener("click", () => generate());
+  function cancelGeneration() {
+    if (!state.busy) return;
+    state.generationRun += 1;
+    state.stopRequested = true;
+    $("cancelBtn").disabled = true;
+    invoke("cancel").catch(() => {});
+  }
+  $("cancelBtn").addEventListener("click", cancelGeneration);
 
   function showWorking(stage, value, max) {
     $("working").hidden = false;
@@ -532,12 +588,25 @@
     if (e.key === "Escape") {
       const z = document.querySelector(".zoom");
       if (z) z.remove();
-      else if (state.busy) invoke("cancel");
+      else if (state.busy) cancelGeneration();
+      else setGenerateMenu(false);
     }
   });
 
   // Language
-  document.querySelectorAll("[data-lang]").forEach((b) => b.addEventListener("click", () => window.i18n.set(b.dataset.lang)));
+  const langToggle = $("langToggle");
+  const langMenu = $("languageMenu");
+  const closeLangMenu = () => { langMenu.hidden = true; langToggle.setAttribute("aria-expanded", "false"); };
+  langToggle.addEventListener("click", () => {
+    langMenu.hidden = !langMenu.hidden;
+    langToggle.setAttribute("aria-expanded", String(!langMenu.hidden));
+  });
+  document.querySelectorAll("[data-lang]").forEach((b) => b.addEventListener("click", () => {
+    window.i18n.set(b.dataset.lang);
+    closeLangMenu();
+  }));
+  document.addEventListener("click", (e) => { if (!e.target.closest(".lang")) closeLangMenu(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeLangMenu(); });
   window.addEventListener("langchange", () => {
     renderModeHint();
     renderQuick();
