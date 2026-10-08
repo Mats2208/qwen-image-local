@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2 — 2026-10-08
+
+- Generation: split Generate button with a "Generate forever" mode that continues until cancelled.
+- Language menu: English, Russian and Spanish are available from a globe button; English remains the default fallback.
+- Windows release: desktop executable, NSIS installer and `qil` CLI artifacts.
+
 ## 0.1.0 — 2026-09-24
 
 First public release, four days after Qwen-Image-2.1 came out.
