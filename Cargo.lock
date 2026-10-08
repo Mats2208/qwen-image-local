@@ -3016,7 +3016,7 @@ checksum = "d55d956fa96f5ec02be2e13af0e20391a5aa83d6a074e3ad368959d0fab299ea"
 
 [[package]]
 name = "qil-cli"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "clap",
  "indicatif",
@@ -3027,7 +3027,7 @@ dependencies = [
 
 [[package]]
 name = "qil-core"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "chrono",
  "dirs 5.0.1",
@@ -3128,7 +3128,7 @@ dependencies = [
 
 [[package]]
 name = "qwen-image-local"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "base64 0.22.1",
  "image",
