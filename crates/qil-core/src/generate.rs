@@ -174,6 +174,30 @@ fn node_error_text(v: &Value) -> String {
     out
 }
 
+fn output_image(entry: &Value) -> Result<&Value, String> {
+    let outputs = entry["outputs"]
+        .as_object()
+        .ok_or_else(|| "The engine history had no usable image metadata".to_string())?;
+    let mut saw_image_entry = false;
+    for node in outputs.values() {
+        let images = node["output"]["images"]
+            .as_array()
+            .or_else(|| node["images"].as_array());
+        let Some(images) = images else { continue };
+        for image in images {
+            saw_image_entry = true;
+            if image["filename"].as_str().is_some_and(|filename| !filename.is_empty()) {
+                return Ok(image);
+            }
+        }
+    }
+    if saw_image_entry {
+        Err("The engine history contained an image entry with no filename".into())
+    } else {
+        Err("The engine history had no usable image metadata".into())
+    }
+}
+
 /// Runs one generation. `out` is a folder (a timestamped name is picked) or an exact `.png` path.
 pub async fn run(
     cfg: &Config,
@@ -277,7 +301,13 @@ pub async fn run(
             .json()
             .await
             .map_err(|e| e.to_string())?;
-        let entry = &hist[&prompt_id];
+        let Some(entry) = hist.get(&prompt_id) else {
+            if Instant::now() > deadline {
+                return Err(format!("The engine returned no history for prompt {prompt_id}"));
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(750)).await;
+            continue;
+        };
         if entry["status"]["completed"].as_bool() == Some(true) || entry["status"]["status_str"].as_str() == Some("error") {
             break entry.clone();
         }
@@ -291,23 +321,25 @@ pub async fn run(
     if entry["status"]["status_str"].as_str() == Some("error") {
         return Err(format!("The engine finished with an error; see {}", cfg.engine_log().display()));
     }
-    let img = entry["outputs"]
-        .as_object()
-        .and_then(|o| o.values().find_map(|n| n["images"].as_array()?.first().cloned()))
-        .ok_or("The engine returned no image")?;
-    let bytes = client
+    let img = output_image(entry)?;
+    let filename = img["filename"].as_str().ok_or("The engine image output had no filename")?;
+    let response = client
         .get(format!("{base}/view"))
         .query(&[
-            ("filename", img["filename"].as_str().unwrap_or("")),
+            ("filename", filename),
             ("subfolder", img["subfolder"].as_str().unwrap_or("")),
             ("type", img["type"].as_str().unwrap_or("output")),
         ])
         .send()
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(|e| format!("Failed to download image {filename}: {e}"))?;
+    if !response.status().is_success() {
+        return Err(format!("Failed to download image {filename}: HTTP {}", response.status()));
+    }
+    let bytes = response
         .bytes()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("Failed to read image {filename}: {e}"))?;
 
     let (width, height) = image::load_from_memory(&bytes).map(|i| (i.width(), i.height())).unwrap_or((w, h));
     let file = if out.extension().is_some_and(|e| e.eq_ignore_ascii_case("png")) {
@@ -378,5 +410,56 @@ mod tests {
     #[test]
     fn transparent_wrapper() {
         assert!(wrap_transparent("a sticker.").contains("RGBA format image with transparency. a sticker. The image"));
+    }
+
+    #[test]
+    fn output_image_reads_nested_save_image_output() {
+        let entry = json!({
+            "outputs": {
+                "save": {
+                    "meta": {"node_id": "save"},
+                    "output": {
+                        "images": [{"filename": "ComfyUI_00001_.png", "subfolder": "", "type": "output"}]
+                    }
+                }
+            }
+        });
+
+        let image = output_image(&entry).expect("nested SaveImage output");
+        assert_eq!(image["filename"], "ComfyUI_00001_.png");
+    }
+
+    #[test]
+    fn output_image_reads_legacy_direct_output() {
+        let entry = json!({
+            "outputs": {
+                "save": {
+                    "images": [{"filename": "legacy.png"}]
+                }
+            }
+        });
+
+        assert_eq!(output_image(&entry).unwrap()["filename"], "legacy.png");
+    }
+
+    #[test]
+    fn output_image_rejects_missing_outputs() {
+        let error = output_image(&json!({})).unwrap_err();
+        assert!(error.contains("no usable image metadata"));
+    }
+
+    #[test]
+    fn output_image_rejects_empty_images() {
+        let error = output_image(&json!({"outputs": {"save": {"output": {"images": []}}}})).unwrap_err();
+        assert!(error.contains("no usable image metadata"));
+    }
+
+    #[test]
+    fn output_image_rejects_missing_or_empty_filename() {
+        for image in [json!({}), json!({"filename": ""})] {
+            let entry = json!({"outputs": {"save": {"output": {"images": [image]}}}});
+            let error = output_image(&entry).unwrap_err();
+            assert!(error.contains("no filename"));
+        }
     }
 }
